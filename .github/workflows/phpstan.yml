@@ -1,0 +1,59 @@
+name: PHPstan
+on:
+  pull_request:
+    types:
+      - labeled
+      - unlabeled
+      - synchronize
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    name: Research
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Verify Pull Request Labels
+        uses: aios/verify-pr-label-action@v1.6.1
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+          valid-labels: 'php:stan'
+          post-review: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          tools: composer:v2
+
+      - name: Get composer cache directory
+        id: composercache
+        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+        working-directory: ./backend
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.composercache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+        working-directory: ./backend
+
+      - name: Execute PHP-stan
+        run: ./vendor/bin/phpstan analyse --error-format=github
+        working-directory: ./backend
+
+      - name: Remove stan label
+        uses: andymckay/labeler@master
+        with:
+          remove-labels: "php:stan"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
+
+

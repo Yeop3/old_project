@@ -1,0 +1,13 @@
+version: "3"
+
+services:
+
+  ngrok:
+    image: shkoliar/ngrok:latest
+    ports:
+      - 4551:4551
+    links:
+      - server
+    environment:
+      - DOMAIN=server
+      - PORT=8080

@@ -1,0 +1,92 @@
+version: "3"
+services:
+
+  redis:
+    image: redis:alpine
+    container_name: "soft_ninja_redis"
+    sysctls:
+      net.core.somaxconn: '511'
+    volumes:
+      - redis_data:/data
+
+  mysql:
+    image: mysql
+    container_name: "soft_ninja_mysql"
+    command:
+      [
+        "--max_allowed_packet=32505856",
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+        "--default-authentication-plugin=mysql_native_password",
+      ]
+    ports:
+      - "3306:3306"
+    env_file:
+      - ./docker/mysql/.env
+    volumes:
+      - database_data:/var/lib/mysql
+
+  server:
+    build: ./docker/caddy
+    container_name: "soft_ninja_server"
+    environment:
+      - CADDYPATH=/etc/caddycerts
+      - ACME_AGREE=TRUE
+      - CLOUDFLARE_API_TOKEN=ELJVov3yxHyeXIirBKDlnemdsl9_cSQ3J8qnjTM9
+      - CLOUDFLARE_FORUM_API_TOKEN=XpOulXypZhe95UrN2JezOsNgDsAorTacvrePiNU7
+    ports:
+      - 8080:8080
+      - 8443:8443
+      - 80:80
+      - 443:443
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./docker/caddy/caddyssl:/etc/caddy/caddycerts
+      - ./main:/app/main
+      - ./admin:/app/admin
+      - ./client:/app/client
+      - ./forum:/app/forum
+    depends_on:
+      - app
+
+  node:
+    build: ./docker/node
+    container_name: "soft_ninja_node"
+    tty: true
+    volumes:
+      - .:/app
+    depends_on:
+      - server
+
+  cron:
+    build: ./docker/
+    container_name: "soft_ninja_cron"
+    volumes:
+      - ./main:/app/main
+    depends_on:
+      - queue_worker
+    command: sh /app/main/schedule.sh
+
+  queue_worker:
+    build: ./docker/
+    container_name: "soft_ninja_queue_worker"
+    restart: always
+    volumes:
+      - ./main:/app/main
+    depends_on:
+      - app
+    command: php /app/main/artisan queue:work --tries=3
+
+  app:
+    build: ./docker/
+    container_name: "soft_ninja_app"
+    volumes:
+      - ./main:/app/main
+      - ./forum:/app/forum
+    depends_on:
+      - mysql
+      - redis
+
+volumes:
+  database_data:
+  redis_data:

@@ -1,0 +1,8 @@
+.idea
+.env
+docker/mysql/.env
+node_modules
+admin/dist/
+client/dist/
+forum/
+main/storage/logs/easy_pay

@@ -1,0 +1,13 @@
+demo.local:8080 {
+    root * /app/main/public
+    php_fastcgi app:9000
+    file_server
+    encode gzip
+}
+
+:8080 {
+    root * /app/main/public
+    php_fastcgi app:9000
+    file_server
+    encode gzip
+}
